@@ -1,39 +1,41 @@
 import { useEffect } from "react";
-import {
-  loadWorksSanctioned,
-  loadExpenditure,
-  loadWorksCompleted,
-} from "./readData";
+import {loadWorksSanctioned,loadExpenditure,loadWorksCompleted,} from "./readData";
+import { loadCombinedWorks } from "./readData";
 
 function App() {
   useEffect(() => {
-    async function testData() {
-      try {
-        const sanctioned = await loadWorksSanctioned();
-        const expenditure = await loadExpenditure();
-        const completed = await loadWorksCompleted();
+    async function test() {
+      const works = await loadCombinedWorks();
 
-        console.log("SANCTIONED:", sanctioned);
-        console.log("EXPENDITURE:", expenditure);
-        console.log("COMPLETED:", completed);
+      console.log("TOTAL WORKS:", works.length);
+      console.log("FIRST WORK:", works[0]);
+      const mismatches = works.filter(
+        (w) => w.financialMismatch
+      );
 
-        console.log("Sanctioned count:", sanctioned.length);
-        console.log("Expenditure count:", expenditure.length);
-        console.log("Completed count:", completed.length);
-      } catch (error) {
-        console.error("DATA ERROR:", error);
-      }
+      console.log(
+        "FINANCIAL MISMATCH COUNT:",
+        mismatches.length
+      );
+
+      console.table(
+  mismatches.slice(0, 10).map((work) => ({
+    workId: work.workId,
+    status: work.status,
+    sanctioned: work.sanctionedAmount,
+    expenditure: work.expenditureAmount,
+    completedDisbursed: work.completedAmountDisbursed,
+    spendingPercent: work.spendingPercentage,
+    completionDate: work.completionDate,
+    vendorCount: work.vendorCount,
+    paymentCount: work.paymentCount,
+  }))
+);
     }
-
-    testData();
+    test();
   }, []);
 
-  return (
-    <div>
-      <h1>MPLADS Dashboard</h1>
-      <p>Data loading test...</p>
-    </div>
-  );
+  return <h1>MPLADS Data Loading</h1>;
 }
 
 export default App;

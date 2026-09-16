@@ -15,6 +15,7 @@ async function loadExcelFile(fileName) {
   return XLSX.utils.sheet_to_json(sheet, {defval: null,});
 }
 
+// Keep only the actual MPLADS Work ID
 function cleanWorkId(id) {
   if (!id) return "";
 
@@ -42,27 +43,39 @@ export async function loadCombinedWorks() {
     loadWorksSanctioned(),loadExpenditure(),loadWorksCompleted(),
   ]);
 
+//EXPENDITURE DATA
   const expenditureMap = {};
 
   expenditure.forEach((row) => {
     const id = cleanWorkId(row["Work ID"]);
 
     if (!id) return;
+
     if (!expenditureMap[id]) {
-      expenditureMap[id] = {totalDisbursed: 0,vendors: new Set(),};
+      expenditureMap[id] = {
+        totalExpenditure: 0,
+        vendors: new Set(),
+        paymentCount: 0,
+        latestExpenditureDate: null,
+      };
     }
 
-    const amount =
-      Number(row["Fund Disbursed Amount ( ₹ )"]) || 0;
-
-    expenditureMap[id].totalDisbursed += amount;
+    const amount = Number(row["Fund Disbursed Amount ( ₹ )"]) || 0;
+    expenditureMap[id].totalExpenditure += amount;
+    expenditureMap[id].paymentCount += 1;
 
     if (row["Vendor Name"]) {
       expenditureMap[id].vendors.add(String(row["Vendor Name"]).trim());
     }
+
+    if (row["Expenditure Date"]) {
+      expenditureMap[id].latestExpenditureDate = row["Expenditure Date"];
+    }
   });
 
+//COMPLETED DATA
   const completedMap = {};
+
   completed.forEach((row) => {
     const id = cleanWorkId(row["Work"]);
 
@@ -70,36 +83,55 @@ export async function loadCombinedWorks() {
 
     completedMap[id] = {
       completionDate: row["Completion Date"],
-      amountDisbursed:Number(row["Amount Disbursed ( ₹ )"]) || 0,
+      completedAmountDisbursed: Number(row["Amount Disbursed ( ₹ )"]) || 0,
     };
   });
 
+//COMBINE USING SANCTIONED AS BASE
   const combined = sanctioned.map((row) => {
+
     const id = cleanWorkId(row["Work ID"]);
     const exp = expenditureMap[id];
     const comp = completedMap[id];
-    const sanctionedAmount =Number(row["Sanction Amount ( ₹ )"]) || 0;
-    const totalDisbursed = exp?.totalDisbursed || 0;
-    const spendingPercentage =sanctionedAmount > 0 ? (totalDisbursed / sanctionedAmount) * 100 : 0;
+    const sanctionedAmount = Number(row["Sanction Amount ( ₹ )"]) || 0;
+    const expenditureAmount = exp?.totalExpenditure || 0;
+    const completedAmountDisbursed = comp?.completedAmountDisbursed || 0;
+    const spendingPercentage = sanctionedAmount > 0 ? (expenditureAmount / sanctionedAmount) * 100 : 0;
 
     return {
+      //Identification
       workId: id,
       state: row["State"],
       mpName: row["Hon'ble Members of Parliament"],
       constituency: row["Constituency"],
+      workCategory: row["Work category"],
       workDescription: row["Work description"],
+
+      //Dates
       recommendedDate: row["Recommended date"],
       sanctionDate: row["Sanction Date"],
-      sanctionedAmount,
-      status: row["Work Status"],
-      totalDisbursed,
-      spendingPercentage,
       completionDate: comp?.completionDate || null,
-      completedAmount: comp?.amountDisbursed || 0,
-      vendors: exp ? Array.from(exp.vendors) : [],
+      latestExpenditureDate: exp?.latestExpenditureDate || null,
 
-      hasExpenditure: !!exp,
+      //Money
+      sanctionedAmount,
+      expenditureAmount,
+      completedAmountDisbursed,
+      spendingPercentage,
+
+      //Status
+      status: row["Work Status"],
       isCompleted: !!comp,
+
+      //Expenditure information
+      hasExpenditure: !!exp,
+      paymentCount: exp?.paymentCount || 0,
+      vendors: exp ? Array.from(exp.vendors) : [],
+      vendorCount: exp?.vendors.size || 0,
+
+      //Data quality
+      financialMismatch: !!comp && expenditureAmount > 0 && completedAmountDisbursed > 0 &&
+      Math.abs(expenditureAmount - completedAmountDisbursed) > 1,
     };
   });
 
