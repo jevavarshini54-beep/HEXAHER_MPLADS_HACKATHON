@@ -1,4 +1,4 @@
-import * as XLSX from "../.gitignore/node_modules/xlsx/types";
+import * as XLSX from "xlsx";
 const DATA_PATH = "/data/Lok-Sabha-Data/";
 
 async function loadExcelFile(fileName) {
