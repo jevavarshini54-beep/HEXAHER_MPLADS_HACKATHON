@@ -94,9 +94,10 @@ export async function loadCombinedWorks() {
     const exp = expenditureMap[id];
     const comp = completedMap[id];
     const sanctionedAmount = Number(row["Sanction Amount ( ₹ )"]) || 0;
-    const expenditureAmount = exp?.totalExpenditure || 0;
+    const expenditureAmount = exp? exp.totalExpenditure : 0;
     const completedAmountDisbursed = comp?.completedAmountDisbursed || 0;
-    const spendingPercentage = sanctionedAmount > 0 ? (expenditureAmount / sanctionedAmount) * 100 : 0;
+    const effectiveExpenditure = expenditureAmount > 0 ? expenditureAmount : completedAmountDisbursed;
+    const spendingPercentage = sanctionedAmount > 0 ? (effectiveExpenditure / sanctionedAmount) * 100 : 0;
 
     return {
       //Identification
@@ -117,6 +118,7 @@ export async function loadCombinedWorks() {
       sanctionedAmount,
       expenditureAmount,
       completedAmountDisbursed,
+      effectiveExpenditure,
       spendingPercentage,
 
       //Status
@@ -136,4 +138,50 @@ export async function loadCombinedWorks() {
   });
 
   return combined;
+}
+
+export async function calculateRiskScores(works) {
+  const BATCH_SIZE = 100;
+  const allScoredWorks = [];
+
+  for (let i = 0; i < works.length; i += BATCH_SIZE) {
+    const batch = works.slice(i, i + BATCH_SIZE);
+
+    console.log(
+      `Sending risk batch ${Math.floor(i / BATCH_SIZE) + 1}...`
+    );
+
+    const response = await fetch("http://localhost:5000/api/risk-score", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(batch),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Risk API error:", errorText);
+
+      throw new Error("Could not calculate risk scores");
+    }
+
+    const scoredBatch = await response.json();
+
+    console.log("BACKEND RESPONSE:", scoredBatch);
+
+    // Backend should return an array
+    if (!Array.isArray(scoredBatch)) {
+      throw new Error("Risk Engine did not return an array");
+    }
+
+    allScoredWorks.push(...scoredBatch);
+  }
+
+  console.log(
+    "ALL RISK SCORES RECEIVED:",
+    allScoredWorks.length
+  );
+
+  return allScoredWorks;
 }
