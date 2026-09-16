@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-const DATA_PATH = "/data/Lok-Sabha-Data/";
+const DATA_PATH = `${import.meta.env.BASE_URL}data/Lok-Sabha-Data/`;
 
 async function loadExcelFile(fileName) {
   const response = await fetch(`${DATA_PATH}${fileName}`);
