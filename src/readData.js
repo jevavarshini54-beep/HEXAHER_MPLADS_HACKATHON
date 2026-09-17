@@ -151,7 +151,7 @@ export async function calculateRiskScores(works) {
       `Sending risk batch ${Math.floor(i / BATCH_SIZE) + 1}...`
     );
 
-    const response = await fetch("http://localhost:5000/api/risk-score", {
+    const response = await fetch("https://hexaher-mplads-hackathon.onrender.com/api/risk-score", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

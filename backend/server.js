@@ -1186,8 +1186,6 @@ if (wantsSummary && (requestedState || detectedTopic || wantsSouthIndia)) {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(
-    `MPLADS backend running on http://localhost:${PORT}`
-  );
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`MPLADS backend running on port ${PORT}`);
 });
