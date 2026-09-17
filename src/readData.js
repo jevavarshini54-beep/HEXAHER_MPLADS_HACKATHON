@@ -122,8 +122,8 @@ export async function loadCombinedWorks() {
       spendingPercentage,
 
       //Status
-      status: row["Work Status"],
       isCompleted: !!comp,
+      status: comp ? "Completed" : row["Work Status"] || "Ongoing",
 
       //Expenditure information
       hasExpenditure: !!exp,
